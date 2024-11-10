@@ -1,5 +1,8 @@
 package il.ac.kinneret.mjmay.grades.processing;
 
+/**
+ * The constants for the server side
+ */
 public class Constants {
 
     public static String connectionStringBooklets = "jdbc:sqlite:booklets.db";

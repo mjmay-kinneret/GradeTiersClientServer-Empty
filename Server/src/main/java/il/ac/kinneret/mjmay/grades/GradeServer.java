@@ -21,8 +21,7 @@ public class GradeServer {
     public static void main(String[] args) {
 
         // check that we have all parameters
-        if ( args.length != 2)
-        {
+        if (args.length != 2) {
             showUsage();
             return;
         }
@@ -31,9 +30,7 @@ public class GradeServer {
         int port = 0;
         try {
             port = Integer.parseInt(args[0]);
-        }
-        catch (Exception ex)
-        {
+        } catch (Exception ex) {
             // something went wrong here. Quit.
             showUsage();
             return;
@@ -62,133 +59,128 @@ public class GradeServer {
             return;
         }
 
+        Vector<InetAddress> adds = getAvailableIPAddresses();
+        if (adds == null) return;
+
+        int choice = selectIPAddress(adds);
+
+        // the listen/stop loop
+        try (BufferedReader brKeyboard = new BufferedReader(new InputStreamReader(System.in))) {
+            String lineIn = "";
+            boolean quit = false;
+            do {
+                // start to listen on the one that the user chose
+                ServerSocket listener = null;
+                try {
+                    listener = new ServerSocket(port, 50, adds.elementAt(choice));
+                    Listening listening = new Listening(listener);
+                    listening.start();
+
+                } catch (IOException e) {
+                    // fatal error, just quit
+                    System.out.println("Can't listen on " + adds.elementAt(choice) + ":" + port);
+                    break;
+                }
+
+                // listen for the command to stop listening
+                do {
+                    // we now have a working server socket, we'll use it later
+                    System.out.println("Listening on " + listener.getLocalSocketAddress().toString());
+                    System.out.println("Enter 'STOP' to stop listening");
+                    lineIn = brKeyboard.readLine();
+
+                } while (!lineIn.trim().equalsIgnoreCase("stop"));
+
+                // stop listening
+                listener.close();
+
+                quit = checkQuit(brKeyboard);
+            } while (!quit);
+        } catch (Exception ex) {
+            // this shouldn't happen
+        }
+
+        return;
+    }
+
+    private static boolean checkQuit(BufferedReader brKeyboard) throws IOException {
+        String lineIn;
+        // now we can resume listening if we want
+        System.out.println("Resume listening? [y/n]");
+        do {
+            System.out.print(": ");
+            lineIn = brKeyboard.readLine();
+        } while (!lineIn.trim().equalsIgnoreCase("y") && !lineIn.trim().equalsIgnoreCase("n"));
+
+        // see whether we have an n or a y
+        if (lineIn.trim().equalsIgnoreCase("y")) {
+            System.out.println("Resuming listening");
+        } else {
+            // quitting
+            System.out.println("Bye!");
+            return true;
+        }
+        return false;
+    }
+
+    private static int selectIPAddress(Vector<InetAddress> adds) {
+        int choice = -1;
+        System.out.println("Choose an IP address to listen on :");
+        for (int i = 0; i < adds.size(); i++) {
+            // show it in the list
+            System.out.println(i + ": " + adds.elementAt(i).toString());
+        }
+
+        BufferedReader brIn = new BufferedReader(new InputStreamReader(System.in));
+
+        while (choice < 0 || choice >= adds.size()) {
+            System.out.print(": ");
+            try {
+                String line = brIn.readLine();
+                choice = Integer.parseInt(line.trim());
+            } catch (Exception ex) {
+                System.out.print("Error parsing choice\n: ");
+            }
+        }
+
+        return choice;
+    }
+
+    private static Vector<InetAddress> getAvailableIPAddresses() {
         // make a list of addresses to choose from
         // add in the usual ones
         Vector<InetAddress> adds = new Vector<>();
         try {
-            adds.add(InetAddress.getByAddress(new byte[] {0, 0, 0, 0}));
+            adds.add(InetAddress.getByAddress(new byte[]{0, 0, 0, 0}));
             adds.addElement(InetAddress.getLoopbackAddress());
         } catch (UnknownHostException ex) {
             // something is really weird - this should never fail
             System.out.println("Can't find IP address 0.0.0.0: " + ex.getMessage());
-            return;
+            return null;
         }
 
         try {
             // get the local IP addresses from the network interface listing
             Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
 
-            while ( interfaces.hasMoreElements() )
-            {
+            while (interfaces.hasMoreElements()) {
                 NetworkInterface ni = interfaces.nextElement();
                 // see if it has an IPv4 address
-                Enumeration<InetAddress> addresses =  ni.getInetAddresses();
-                while ( addresses.hasMoreElements())
-                {
+                Enumeration<InetAddress> addresses = ni.getInetAddresses();
+                while (addresses.hasMoreElements()) {
                     // go over the addresses and add them
                     InetAddress add = addresses.nextElement();
-                    if (!add.isLoopbackAddress())
-                    {
+                    if (!add.isLoopbackAddress()) {
                         adds.addElement(add);
                     }
                 }
             }
-        }
-        catch (SocketException ex)
-        {
+        } catch (SocketException ex) {
             // can't get local addresses, something's wrong
             System.out.println("Can't get network interface information: " + ex.getMessage());
-            return;
+            return null;
         }
-
-        System.out.println("Choose an IP address to listen on :");
-        for (int i = 0; i < adds.size(); i++)
-        {
-            // show it in the list
-            System.out.println(i + ": " + adds.elementAt(i).toString());
-        }
-
-        BufferedReader brIn = new BufferedReader(new InputStreamReader(System.in));
-        int choice = -1;
-
-        while ( choice < 0 || choice >= adds.size())
-        {
-            System.out.print(": ");
-            try {
-                String line = brIn.readLine();
-                choice = Integer.parseInt(line.trim());
-            }
-            catch (Exception ex) {
-                System.out.print("Error parsing choice\n: ");
-            }
-        }
-
-        // the listen/stop loop
-        String lineIn = "";
-        boolean quit = false;
-        do {
-            // start to listen on the one that the user chose
-            ServerSocket listener = null;
-            try {
-                listener = new ServerSocket(port, 50, adds.elementAt(choice));
-                Listening listening = new Listening(listener);
-                listening.start();
-
-            } catch (IOException e) {
-                // fatal error, just quit
-                System.out.println("Can't listen on " + adds.elementAt(choice) + ":" + port);
-                break;
-            }
-
-            // listen for the command to stop listening
-            do {
-                // we now have a working server socket, we'll use it later
-                System.out.println("Listening on " + listener.getLocalSocketAddress().toString());
-                System.out.println("Enter 'STOP' to stop listening");
-
-                try {
-                    lineIn = brIn.readLine();
-                } catch (IOException ex)
-                {
-                    System.out.println("Error in reading from console: " + ex.getMessage());
-                }
-            } while ( !lineIn.trim().equalsIgnoreCase("stop"));
-
-            // stop listening
-            try {
-                listener.close();
-            } catch (IOException e) {
-                // error while stopping to listen?  weird
-                System.out.println("Error stopping listening: " + e.getMessage());
-            }
-
-            // now we can resume listening if we want
-            System.out.println("Resume listening? [y/n]");
-            do {
-                System.out.print(": ");
-                try {
-                    lineIn = brIn.readLine();
-                } catch (IOException ex)
-                {
-                    System.out.println("Error in reading from console: " + ex.getMessage());
-                }
-
-            } while ( !lineIn.trim().equalsIgnoreCase("y") && !lineIn.trim().equalsIgnoreCase("n"));
-
-            // see whether we have an n or a y
-            if ( lineIn.trim().equalsIgnoreCase("y"))
-            {
-                System.out.println("Resuming listening");
-            }
-            else
-            {
-                quit = true;
-                // quitting
-                System.out.println("Bye!");
-            }
-        } while (!quit);
-
-        return;
+        return adds;
     }
 
     /**

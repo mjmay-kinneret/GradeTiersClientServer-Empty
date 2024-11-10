@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "il.ac.kinneret.mjmay.grades"
-version = "1.0-SNAPSHOT"
+version = "5785"
 
 repositories {
     mavenCentral()
@@ -26,5 +26,5 @@ tasks.withType<Jar> {
 }
 
 application{
-    mainClass.set("il.ac.kinneret.grades.GradeClient")
+    mainClass.set("il.ac.kinneret.mjmay.grades.GradeClient")
 }

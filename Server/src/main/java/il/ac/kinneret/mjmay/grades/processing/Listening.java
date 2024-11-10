@@ -28,19 +28,10 @@ public class Listening extends Thread {
         try {
             while (true)
             {
-                Socket clientSession = listeningSocket.accept();
-
-                // see if we were interrupted - then stop
-                if (this.isInterrupted())
-                {
-                    System.err.println("Stopped listening due to interruption.");
-                    break;
-                }
-                // create a new handling thread for the client
-                HandleClient clientThread = new HandleClient(clientSession);
-                clientThread.start();
+                // TODO: Listen for incoming connections
+                // TODO: Handle them one at a time via a HandleClient instance.
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             // problem with this connection, show the output and quit
             System.err.println("Error listening for connections: " + e.getMessage());
         }
